@@ -9,15 +9,6 @@ navbar:
     href: https://mariembouhadda.github.io/
   - text: Breast Cancer Classification  
     href: 2_12.html
-    menu: 
-      - text: Maps
-        href: leaflet.html
-      - text: Shiny apps
-      - text: Notebooks
-  - text: Bioinformatics
-    menu: 
-      - text: Cancer Science
-        href: 2_12.html
   - text: My CV
     href: mariemcv.html
   right:
