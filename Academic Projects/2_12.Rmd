@@ -1,0 +1,530 @@
+---
+title: "Binary Classification of Breast Cancer "
+author: "Mariem Bouhadda"
+date: "December, 2018"
+output: 
+    html_document:
+        toc: yes
+        theme: cosmo
+        highlight: tango
+        fig_width: 12
+        fig_height: 8
+---
+
+
+<!-- ## 1. Intro & Purpose -->
+<!-- Hello, Kagglers! -->
+
+<!-- This is my first project since I’ve learned R. -->
+
+<!-- I’ve been studying R around a month, still many things to discover and learn. -->
+
+<!-- Big welcome if you suggest to me about new ML techniques.  -->
+
+<!-- It will be amazing to hear the different ideas to solve the problems with various perspective! -->
+
+
+<!-- In summary, I used many classification methods in this kernel. -->
+<!-- I hope this kernel will be helpful to beginner in this area!  -->
+
+<!-- For better understanding each function, I’ve wrote library right above the function. -->
+
+```{r setup, include=FALSE,echo=FALSE}
+knitr::opts_chunk$set(warning=FALSE, message=FALSE)
+```
+
+
+---
+
+## 1. Data Description and summary 
+
+<!-- ## 2. Data Importing & Cleaning & Inspecting -->
+### 1-1) Data description
+<!-- ### 2-1) Import dataset -->
+<!-- wbcd means 'wisconsin breast cancer data' -->
+```{r ,echo=FALSE   }
+wbcd <- read.csv("bc_data.csv", header=T, stringsAsFactors=F)
+```
+
+
+<!-- ### 2-2) Remove NULL Data -->
+```{r,echo=FALSE}
+ wbcd$X <- NULL 
+``` 
+
+<!-- ### 2-3) Reshape the datasets -->
+```{r,echo=FALSE}
+wbcd <- wbcd[,-1]
+wbcd$diagnosis <- factor(ifelse(wbcd$diagnosis=="B","Benign","Malignant"))
+```
+### 1-2) Structure and summary {.tabset}
+<!-- ### 2-4) Inspect the datasets {.tabset} -->
+#### structure
+```{r , echo=FALSE}
+str(wbcd)
+```
+
+#### summary
+```{r, echo=FALSE}
+summary(wbcd)
+```
+
+#### head
+```{r, echo=FALSE}
+knitr::kable(head(wbcd))
+```
+
+
+---
+
+
+
+
+<!-- ## 3. Analyze the Correlation between variables -->
+ ## 2. Correlation and relationship between variables 
+
+<!-- ### 3-1) Correlation between each variables {.tabset} -->
+<!-- There are many ways to draw a correalation plot! -->
+
+<!-- For practice, I applied different function to each data (mean, se, worst) -->
+
+<!-- #### Mean -->
+<!-- ```{r} -->
+<!-- library(PerformanceAnalytics) -->
+<!-- chart.Correlation(wbcd[,c(2:11)],histogram=TRUE, col="grey10", pch=1, main="Cancer Mean") -->
+<!-- ``` -->
+
+<!-- #### SE -->
+<!-- ```{r} -->
+<!-- library(psych) -->
+<!-- pairs.panels(wbcd[,c(12:21)], method="pearson", -->
+<!--              hist.col = "#1fbbfa", density=TRUE, ellipses=TRUE, show.points = TRUE, -->
+<!--              pch=1, lm=TRUE, cex.cor=1, smoother=F, stars = T, main="Cancer SE") -->
+<!-- ``` -->
+
+<!-- #### Worst -->
+<!-- ```{r} -->
+<!-- library(ggplot2) -->
+<!-- library(GGally) -->
+<!-- ggpairs(wbcd[,c(22:31)],)+ theme_bw()+ -->
+<!-- labs(title="Cancer Worst")+ -->
+<!-- theme(plot.title=element_text(face='bold',color='black',hjust=0.5,size=13)) -->
+<!-- ``` -->
+
+
+
+<!-- ### 3-2) See the relation between each variables (diagnosis included) {.tabset} -->
+<!-- I think viewing plot with diagnosis included is much more important than combined data[3-1]. -->
+
+```{r,echo=FALSE}
+library(ggplot2)
+library(GGally)
+```
+## 2. Correlation and relationship between variables  {.tabset}
+
+### Mean
+```{r,echo=FALSE}
+ggpairs(wbcd[,c(2:11,1)], aes(color=diagnosis, alpha=0.75), lower=list(continuous="smooth"))+ theme_bw()+
+labs(title="Cancer Mean")+
+theme(plot.title=element_text(face='bold',color='black',hjust=0.5,size=12))
+```
+
+### SE
+```{r,echo=FALSE}
+ggpairs(wbcd[,c(12:21,1)], aes(color=diagnosis, alpha=0.75), lower=list(continuous="smooth"))+ theme_bw()+
+labs(title="Cancer SE")+
+theme(plot.title=element_text(face='bold',color='black',hjust=0.5,size=12))
+```
+
+### Worst
+```{r,echo=FALSE}
+ggpairs(wbcd[,c(22:31,1)], aes(color=diagnosis, alpha=0.75), lower=list(continuous="smooth"))+ theme_bw()+
+labs(title="Cancer Worst")+
+theme(plot.title=element_text(face='bold',color='black',hjust=0.5,size=12))
+```
+
+
+high correlation value means it has "multicollinearity" between variables.
+ Use one main component for model development by reduct the variables with high correlation.
+
+
+
+
+## 3. Principal Component Analysis (PCA)
+
+<!-- Too many variables can cause such problems below -->
+
+<!-- - Increased computer throughput -->
+
+<!-- - Too complex visualization problems -->
+
+<!-- - Decrease efficiency by including variables that have no effect on the analysis -->
+
+<!-- - Make data interpretation difficult -->
+
+
+<!-- If you see the ggcorr plot above[3-3], high correlation value means it has "multicollinearity" between variables. -->
+
+<!-- -> Use one main component for model development by reduct the variables with high correlation. -->
+
+<!-- **When determining the number of principal components,  -->
+<!-- use the cumulative contribution rate  -->
+<!-- or use a screeplot and use the previous step of the principal component where the eigenvalue curve lies horizontally. -->
+
+<!-- PCA uses standardized data so that it can avoid data distortion caused by scale difference. -->
+```{r,echo=FALSE}
+library(factoextra)
+wbcd_pca <- transform(wbcd)	
+```
+
+<!-- ### 4-1) Summary {.tabset} -->
+<!-- In the results of PCA, if the cumulative proportion is 85% or above, it can be determined by the number of principal components. -->
+
+<!-- * View Point : Cumulative Proportion -->
+
+<!-- For example, if cumulative proportion of PC4 is 88.7, it means **the sum of proportion of PC1~PC4** is 88.7! -->
+
+
+<!-- #### All -->
+<!-- The cumulative proportion from PC1 to PC6 is about 88.7%. (above 85%) -->
+
+<!-- It means that PC1~PC6 can explain 88.7% of the whole data. -->
+```{r,echo=FALSE}
+all_pca <- prcomp(wbcd_pca[,-1], cor=TRUE, scale = TRUE)
+```
+
+<!-- #### Mean -->
+<!-- The cumulative proportion from PC1 to PC3 is about 88.7%. (above 85%) -->
+```{r,echo=FALSE}
+mean_pca <- prcomp(wbcd_pca[,c(2:11)], scale = TRUE)
+```
+
+<!-- #### SE -->
+<!-- The cumulative proportion from PC1 to PC4 is about 86.7%. (above 85%) -->
+```{r,echo=FALSE}
+se_pca <- prcomp(wbcd_pca[,c(12:21)], scale = TRUE)
+```
+
+<!-- #### Worst -->
+<!-- The cumulative proportion from PC1 to PC3 is about 85.8%. (above 85%) -->
+```{r,echo=FALSE}
+worst_pca <- prcomp(wbcd_pca[,c(22:31)], scale = TRUE)
+```
+
+
+<!-- ### 4-2) Screeplot {.tabset} -->
+### 3-1) Screeplot {.tabset} 
+The percentage of variability explained by the principal components can be ascertained through screeplot.
+
+<!-- => View Point : principal components where the line lies. -->
+
+<!-- #### All -->
+<!-- Line lies at point PC6 -->
+```{r,echo=FALSE}
+fviz_eig(all_pca, addlabels=TRUE, ylim=c(0,60), geom = c("bar", "line"), barfill = "pink", barcolor="grey",linecolor = "red", ncp=10)+
+labs(title = "Cancer All Variances - PCA",
+         x = "Principal Components", y = "% of variances")
+```
+
+
+<!-- ### 4-3) Get PCA Variables {.tabset} -->
+<!-- #### All -->
+<!-- ##### Get PCA Variables -->
+
+##### Contributions of variables to PC1 & PC2
+```{r,echo=FALSE}
+library(gridExtra)
+p1 <- fviz_contrib(all_pca, choice="var", axes=1, fill="pink", color="grey", top=10)
+p2 <- fviz_contrib(all_pca, choice="var", axes=2, fill="skyblue", color="grey", top=10)
+grid.arrange(p1,p2,ncol=2)
+```
+
+
+
+
+
+
+
+
+
+
+### 3-2) See the Biplot {.tabset}
+```{r,echo=FALSE}
+library("factoextra")
+```
+
+```{r,echo=FALSE}
+fviz_pca_biplot(all_pca, col.ind = wbcd$diagnosis, col="black",
+                palette = "jco", geom = "point", repel=TRUE,
+                legend.title="Diagnosis", addEllipses = TRUE)
+```
+
+
+
+---
+
+
+
+
+## 4. Apply ML methods and compare each other and choose best fits
+### 4-1) Make test & train dataset for testing classification ML methods
+Shuffle the wbcd data(100%) & Make train dataset(70%), test dataset(30%)
+
+```{r,echo=FALSE}
+nrows <- NROW(wbcd)
+set.seed(218)				            ## fix random value
+index <- sample(1:nrows, 0.7 * nrows)	## shuffle and divide
+
+#train <- wbcd		        	        ## 569 test data (100%)
+train <- wbcd[index,]			        ## 398 test data (70%)
+test <- wbcd[-index,]  		            ## 171 test data (30%)
+```
+
+
+<!-- ### 5-2) Check the proportion of diagnosis (Benign / Malignant) {.tabset} -->
+<!-- #### train -->
+```{r,echo=FALSE}
+prop.table(table(train$diagnosis))
+```
+
+<!-- #### test -->
+```{r,echo=FALSE}
+prop.table(table(test$diagnosis))
+```
+
+
+### 4-2) Apply every ML methods to data {.tabset}
+```{r}
+library(caret)
+```
+
+
+
+#### rpart
+```{r}
+library(rpart)
+learn_rp <- rpart(diagnosis~.,data=train,control=rpart.control(minsplit=2))
+pre_rp <- predict(learn_rp, test[,-1], type="class")
+cm_rp  <- confusionMatrix(pre_rp, test$diagnosis)
+cm_rp
+```
+
+
+#### randomForest
+```{r}
+library(randomForest)
+learn_rf <- randomForest(diagnosis~., data=train, ntree=500, proximity=T, importance=T)
+pre_rf   <- predict(learn_rf, test[,-1])
+cm_rf    <- confusionMatrix(pre_rf, test$diagnosis)
+cm_rf
+```
+```{r}
+plot(learn_rf, main="Random Forest (Error Rate vs. Number of Trees)")
+```
+
+<!-- ##### Prediction Plot -->
+<!-- I can't explain this plot exactly.  -->
+
+<!-- Anybody who can describe this plot, please let me know. I'm happy to add in my kernel. -->
+```{r,echo=FALSE}
+plot(margin(learn_rf,test$diagnosis))
+```
+
+##### Variance Importance Plot
+- MeanDecreaseAccuracy : radius_worst > concave.points_worst > area_worst > perimeter_worst
+
+Important parameters for accuracy improvement are determined by the "MeanDecreaseAccuracy".
+
+
+- MeanDecreaseGini : perimeter_worst > radius_worst > area_worst > concave.points_worst
+
+Important parameters for improving node impurities are determined by the "MeanDecreaseGini".
+```{r}
+varImpPlot(learn_rf)
+```
+
+
+
+#### ctree
+```{r}
+library(party)
+learn_ct <- ctree(diagnosis~., data=train, controls=ctree_control(maxdepth=2))
+pre_ct   <- predict(learn_ct, test[,-1])
+cm_ct    <- confusionMatrix(pre_ct, test$diagnosis)
+cm_ct
+```
+
+
+#### KNN - Tune
+##### Choose 'k' which shows best predict performance in KNN
+```{r}
+library(class)
+
+acc_test <- numeric()
+
+for(i in 1:30){
+    predict <- knn(train=train[,-1], test=test[,-1], cl=train[,1], k=i, prob=T)
+    acc_test <- c(acc_test,mean(predict==test[,1]))
+}
+
+acc <- data.frame(k= seq(1,30), cnt = acc_test)
+
+opt_k <- subset(acc, cnt==max(cnt))[1,]
+sub <- paste("Optimal number of k is", opt_k$k, "(accuracy :", opt_k$cnt,") in KNN")
+
+library(highcharter)
+# hchart(acc, 'line', hcaes(k, cnt)) %>%
+#   hc_title(text = "Accuracy With Varying K (KNN)") %>%
+#   hc_subtitle(text = sub) %>%
+#   hc_add_theme(hc_theme_google()) %>%
+#   hc_xAxis(title = list(text = "Number of Neighbors(k)")) %>%
+#   hc_yAxis(title = list(text = "Accuracy"))
+
+
+```
+
+##### Apply optimal K to show best predict performance in KNN
+```{r}
+library(class)
+library(caret)
+pre_knn <- knn(train = train[,-1], test = test[,-1], cl = train[,1], k=opt_k$k, prob=T)
+cm_knn  <- confusionMatrix(pre_knn, test$diagnosis)
+cm_knn
+```
+
+
+#### K-Means
+##### Make KMEANS predict function
+we have to make function to predict using kmeans methods, since orgin predict function don't support kmeans.
+```{r}
+predict.kmeans <- function(newdata, object){
+    centers <- object$centers
+    n_centers <- nrow(centers)
+    dist_mat <- as.matrix(dist(rbind(centers, newdata)))
+    dist_mat <- dist_mat[-seq(n_centers), seq(n_centers)]
+    max.col(-dist_mat)
+}
+```
+
+##### apply kmeans
+you have to apply centers to 2, since there are only two factors(benign, malignant)
+```{r}
+# library(caret)
+# learn_kmeans <- kmeans(train[,-1], centers=2)
+#
+# pre_kmeans <- predict.kmeans(test[,-1],learn_kmeans)
+# pre_kmeans <- ifelse(pre_kmeans == 1,"Benign","Malignant")
+# cm_kmeans <- confusionMatrix(pre_kmeans, test$diagnosis)
+# length(pre_kmeans)==length(test$diagnosis)
+# str(test$diagnosis)
+# cm_kmeans
+```
+
+##### plot
+```{r}
+library(factoextra)
+# learn_kmeans$cluster <- ifelse(learn_kmeans$cluster == 1,"Benign","Malignant")
+# fviz_cluster(learn_kmeans, data = train[,-1])
+```
+
+
+#### GBM
+```{r}
+library(gbm)
+test_gbm <- gbm(diagnosis~., data=train, distribution="gaussian",n.trees = 10000,
+                shrinkage = 0.01, interaction.depth = 4, bag.fraction=0.5, train.fraction=0.5,n.minobsinnode=10,cv.folds=3,keep.data=TRUE,verbose=FALSE,n.cores=1)
+best.iter <- gbm.perf(test_gbm, method="cv",plot.it=FALSE)
+fitControl = trainControl(method="cv", number=5, returnResamp="all")
+learn_gbm = train(diagnosis~., data=train, method="gbm", distribution="bernoulli", trControl=fitControl, verbose=F, tuneGrid=data.frame(.n.trees=best.iter, .shrinkage=0.01, .interaction.depth=1, .n.minobsinnode=1))
+pre_gbm <- predict(learn_gbm, test[,-1])
+cm_gbm <- confusionMatrix(pre_gbm, test$diagnosis)
+cm_gbm
+```
+
+
+
+
+
+#### SVM
+```{r}
+library(e1071)
+learn_svm <- svm(diagnosis~., data=train)
+pre_svm <- predict(learn_svm, test[,-1])
+cm_svm <- confusionMatrix(pre_svm, test$diagnosis)
+cm_svm
+```
+
+
+#### SVM - Tune
+##### Choose 'gamma, cost' which shows best predict performance in SVM
+```{r}
+gamma <- seq(0,0.1,0.005)
+cost <- 2^(0:5)
+parms <- expand.grid(cost=cost, gamma=gamma)    ## 231
+
+acc_test <- numeric()
+accuracy1 <- NULL; accuracy2 <- NULL
+
+for(i in 1:NROW(parms)){
+        learn_svm <- svm(diagnosis~., data=train, gamma=parms$gamma[i], cost=parms$cost[i])
+        pre_svm <- predict(learn_svm, test[,-1])
+        accuracy1 <- confusionMatrix(pre_svm, test$diagnosis)
+        accuracy2[i] <- accuracy1$overall[1]
+}
+
+acc <- data.frame(p= seq(1,NROW(parms)), cnt = accuracy2)
+
+opt_p <- subset(acc, cnt==max(cnt))[1,]
+sub <- paste("Optimal number of parameter is", opt_p$p, "(accuracy :", opt_p$cnt,") in SVM")
+
+library(highcharter)
+library(magrittr)
+# hchart(acc, 'line', hcaes(p, cnt)) %>%
+#   hc_title(text = "Accuracy With Varying Parameters (SVM)") %>%
+#   hc_subtitle(text = sub) %>%
+#   hc_add_theme(hc_theme_google()) %>%
+#   hc_xAxis(title = list(text = "Number of Parameters")) %>%
+#   hc_yAxis(title = list(text = "Accuracy"))
+
+```
+
+##### Apply optimal parameters(gamma, cost) to show best predict performance in SVM
+```{r}
+library(e1071)
+library(caret)
+learn_imp_svm <- svm(diagnosis~., data=train, cost=parms$cost[opt_p$p], gamma=parms$gamma[opt_p$p])
+pre_imp_svm <- predict(learn_imp_svm, test[,-1])
+cm_imp_svm <- confusionMatrix(pre_imp_svm, test$diagnosis)
+cm_imp_svm
+```
+
+
+### 4-3) Visualize to compare the accuracy of all methods
+```{r,echo=FALSE}
+col <- c("#ed3b3b", "#0099ff")
+par(mfrow=c(3,5))
+fourfoldplot(cm_rp$table, color = col, conf.level = 0, margin = 1, main=paste("rpart (",round(cm_rp$overall[1]*100),"%)",sep=""))
+fourfoldplot(cm_ct$table, color = col, conf.level = 0, margin = 1, main=paste("CTree (",round(cm_ct$overall[1]*100),"%)",sep=""))
+fourfoldplot(cm_knn$table, color = col, conf.level = 0, margin = 1, main=paste("Tune KNN (",round(cm_knn$overall[1]*100),"%)",sep=""))
+#fourfoldplot(cm_kmeans$table, color = col, conf.level = 0, margin = 1, main=paste("KMeans (",round(cm_kmeans$overall[1]*100),"%)",sep=""))
+fourfoldplot(cm_rf$table, color = col, conf.level = 0, margin = 1, main=paste("RandomForest (",round(cm_rf$overall[1]*100),"%)",sep=""))
+fourfoldplot(cm_gbm$table, color = col, conf.level = 0, margin = 1, main=paste("GBM (",round(cm_gbm$overall[1]*100),"%)",sep=""))
+fourfoldplot(cm_svm$table, color = col, conf.level = 0, margin = 1, main=paste("SVM (",round(cm_svm$overall[1]*100),"%)",sep=""))
+fourfoldplot(cm_imp_svm$table, color = col, conf.level = 0, margin = 1, main=paste("Tune SVM (",round(cm_imp_svm$overall[1]*100),"%)",sep=""))
+```
+
+##5. Conclusion
+
+ Select a best prediction model according to high accuracy
+```{r,echo=FALSE}
+opt_predict <- c(cm_rp$overall[1], cm_ct$overall[1], cm_knn$overall[1]# cm_kmeans$overall[1]
+, cm_rf$overall[1], cm_gbm$overall[1], cm_svm$overall[1], cm_imp_svm$overall[1])
+names(opt_predict) <- c("rpart","ctree","knn"#"kmeans"
+,"rf","gbm","svm","imp_svm")
+best_predict_model <- subset(opt_predict, opt_predict==max(opt_predict))
+best_predict_model
+```
+
+
+
+

@@ -1,0 +1,37 @@
+name: Mariem Bouhadda
+output_dir: '.'
+navbar:
+  title: Mariem Bouhadda
+  type: inverse
+  left:
+  - text: Home
+    icon: fa-home
+    href: https://mariembouhadda.github.io/
+  - text: Breast Cancer Classification  
+    href: 2_12.html
+    menu: 
+      - text: Maps
+        href: leaflet.html
+      - text: Shiny apps
+      - text: Notebooks
+  - text: Bioinformatics
+    menu: 
+      - text: Cancer Science
+        href: 2_12.html
+  - text: My CV
+    href: mariemcv.html
+  right:
+  - icon: fa-envelope fa-lg
+    href: contact.html
+  - icon: fa-github fa-lg
+    href: https://gist.github.com/mariem1bouhadda
+  - icon: fa-linkedin fa-lg
+    href: https://www.linkedin.com/in/mariem-bouhadda/
+ 
+output:
+  html_document:
+    theme: yeti
+    highlight: textmate
+    css: styles.css
+    lib_dir: site_libs
+    self_contained: no
