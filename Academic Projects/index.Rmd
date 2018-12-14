@@ -5,5 +5,6 @@
     
   <img src="mariem.png" style="width:15%; border:1px solid; margin-right: 20px" align="left">
       
-  I'm Mariem Bouhadda , 23 , a Statistics and Data Analysis Engineering student
+  I'm Mariem Bouhadda , 23 , a Statistics and Data Analysis Engineering student.
+  Have a look on my projects and feel free to contact me for further details.
     
